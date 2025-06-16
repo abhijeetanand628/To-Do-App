@@ -1,4 +1,4 @@
-import { FlatList, Text, View, StyleSheet, Image, TouchableOpacity, TextInput, KeyboardAvoidingView, Keyboard } from "react-native";
+import { FlatList, Text, View, StyleSheet, Image, TouchableOpacity, TextInput, KeyboardAvoidingView, Keyboard, Alert } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";  
 import {Ionicons} from '@expo/vector-icons';  
 import {Checkbox} from 'expo-checkbox';
@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 // THIS SafeAreaView KEEPS ALL THE STUFF ISNIDE THE EYE RANGE OF PEOPLE BASICALLY BELOW THE NODGE LVL
 
-type TodoType = {
+type ToDoType = {
   id: number;
   title: string;
   isDone: boolean;
@@ -50,13 +50,15 @@ export default function Index() {
   const [toDos, setToDos] = useState<ToDoType[]>([]);
   const [toDoText, setToDoText] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const [oldToDos, setOldToDos] = useState<ToDoType[]>([]);
 
   useEffect(() => {
     const getTodos = async() => {
       try {
         const todos = await AsyncStorage.getItem('my-todo');  // THIS FETCHES THE STORED DATA
         if(todos != null) {
-          setToDos(JSON.parse(todos))
+          setToDos(JSON.parse(todos));
+          setOldToDos(JSON.parse(todos));
         }
       } catch(error) {
         console.log(error)
@@ -74,6 +76,7 @@ export default function Index() {
     };
     toDos.push(newTask);
     setToDos(toDos);
+    setOldToDos(toDos);
     await AsyncStorage.setItem('my-todo', JSON.stringify(toDos));  // THIS STORES THE DATA 
     setToDoText('') // THIS CLEARS THE KEYBOARD AFTER ADDING A NEW TASK
     Keyboard .dismiss() // THIS CLOSES THE KEYBAORD AFTER ADDING A TASK
@@ -89,6 +92,7 @@ const deleteToDo = async(id: number) => {
     const newTodos = toDos.filter((todo) => todo.id !== id);   
     await AsyncStorage.setItem('my-todo', JSON.stringify(newTodos));
     setToDos(newTodos);
+    setOldToDos(newTodos);
   }
   catch(error) {
     console.log(error); 
@@ -105,21 +109,40 @@ const handleDone = async (id: number) => {
     });
     await AsyncStorage.setItem('my-todo', JSON.stringify(newTodos));
     setToDos(newTodos);
+    setOldToDos(newTodos);
   } catch(error) {
     console.log(error);
   }
 };
+
+const onSearch = (query: string) => {
+  if(query == '')
+  {
+    setToDos(oldToDos);
+  }
+  else
+  {
+      const filteredTodos = toDos.filter((todo) => 
+      todo.title.toLowerCase().includes(query.toLowerCase())
+    );
+    setToDos(filteredTodos);  
+  }
+};
+
+useEffect(() => {
+  onSearch(searchQuery);
+}, [searchQuery])
 
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
 
          <TouchableOpacity onPress={() => {alert('Clicked!')}}>
-         <Ionicons name="menu" size={24} color={'#333'} />   {/* // USED TO IMPORT ICONS */}
+         <Ionicons name="menu" size={24} color={'#333'} />   {/*  USED TO IMPORT ICONS */}
          </TouchableOpacity>
 
          <TouchableOpacity onPress={() => {}}>
-         <Image source={require('../assets/images/profile img.jpg')}
+         <Image source={require('../assets/images/profileimg.jpg')}
           style={{width: 40, height: 40, borderRadius: 50}}
          />
          </TouchableOpacity>
@@ -129,6 +152,8 @@ const handleDone = async (id: number) => {
         <Ionicons name='search' size={24} color={'black'}  />
         <TextInput 
           placeholder="Search" 
+          value={searchQuery}
+          onChangeText={(text) => setSearchQuery(text)}
           style={styles.searchInput} 
           clearButtonMode="always"    // THIS clearButtonMode imports a cross(X) icon in the searchbox whenever we try to start writing 
           />
@@ -180,7 +205,7 @@ const ToDoItem = ({
           <TouchableOpacity 
             onPress={() => {
               deleteTodo(todo.id);
-              alert('Deleted ' + todo.id)
+              Alert.alert("Deleted"  + `Todo ID: ${todo.id}`)
             }}>
             <Ionicons name="trash" size={24} color={'red'}/>
           </TouchableOpacity>
